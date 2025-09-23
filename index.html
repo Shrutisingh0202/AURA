@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- "dark" class will be added here dynamically -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA - Personal Expense Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/customParseFormat.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- PWA Manifest and Meta Tags -->
+    <link id="manifest-link" rel="manifest">
+    <meta name="theme-color" content="#f97316">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="https://cdn.corenexis.com/view/1216636168">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AURA">
+
+    <style>
+        :root {
+            --bg-primary: #fff7ed; /* orange-50 */
+            --bg-secondary: #ffffff; /* white */
+            --bg-tertiary: #fee2e2; /* red-100 */
+            --text-primary: #7c2d12; /* orange-900 */
+            --text-secondary: #9a3412; /* orange-800 */
+            --text-gradient-from: #f97316; /* orange-500 */
+            --text-gradient-to: #dc2626; /* red-600 */
+            --border-color: #fca5a5; /* red-300 */
+            --gradient-main-from: #fed7aa; /* orange-200 */
+            --gradient-main-to: #fecaca; /* red-200 */
+        }
+
+        html.dark {
+            --bg-primary: #1c1917; /* stone-900 */
+            --bg-secondary: #292524; /* stone-800 */
+            --bg-tertiary: #44403c; /* stone-700 */
+            --text-primary: #ffedd5; /* orange-100 */
+            --text-secondary: #fed7aa; /* orange-200 */
+            --text-gradient-from: #fb923c; /* orange-400 */
+            --text-gradient-to: #f87171; /* red-400 */
+            --border-color: #57534e; /* stone-600 */
+            --gradient-main-from: #7c2d12; /* orange-900 */
+            --gradient-main-to: #7f1d1d; /* red-900 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .bg-gradient-login {
+             background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, var(--text-gradient-from) 0%, var(--text-gradient-to) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gradient {
+            background-image: linear-gradient(to right, #f97316 0%, #ef4444 51%, #f97316 100%);
+            background-size: 200% auto;
+            transition: 0.5s;
+        }
+        .btn-gradient:hover {
+            background-position: right center;
+        }
+        .btn-gradient:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: #fca5a5; border-radius: 4px; }
+        html.dark ::-webkit-scrollbar-thumb { background: #7c2d12; }
+        .modal-backdrop { background-color: rgba(0,0,0,0.5); }
+        
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .nav-link.active {
+            background-color: var(--text-gradient-from);
+            color: white;
+        }
+        #auth-display-name.hidden {
+            display: none;
+        }
+        .font-cursive {
+            font-family: 'Playfair Display', serif;
+        }
+        
+        /* PIN Shake Animation */
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake {
+          animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="fixed inset-0 z-[60] flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out opacity-0 pointer-events-none" style="background: linear-gradient(to top, #fef08a, #f97316, #dc2626);">
+        <h1 id="welcome-message" class="text-5xl font-bold font-cursive italic" style="color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Hello!</h1>
+    </div>
+
+    <!-- App Lock Screen -->
+    <div id="app-lock-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-login p-4" style="display: none;">
+        <div class="w-full max-w-xs text-center">
+            <h2 class="text-2xl font-bold text-white mb-2">Enter PIN</h2>
+            <p class="text-white/80 mb-4">Enter your 4-digit PIN to unlock AURA.</p>
+            <div id="pin-dots" class="flex justify-center gap-4 mb-4">
+                <div class="w-4 h-4 rounded-full border-2 border-white transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-white transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-white transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-white transition-colors"></div>
+            </div>
+             <p id="pin-error" class="text-red-300 text-sm h-5 mb-2"></p>
+            <div class="grid grid-cols-3 gap-4 text-white text-2xl font-bold">
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">1</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">2</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">3</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">4</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">5</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">6</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">7</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">8</button>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">9</button>
+                <div></div>
+                <button class="pin-btn p-4 rounded-full bg-white/20 hover:bg-white/30">0</button>
+                <button id="pin-backspace" class="p-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 12M3 12l6.414-6.414a2 2 0 012.828 0L21 12" /></svg>
+                </button>
+            </div>
+            <button id="forgot-pin-btn" class="text-white/80 mt-6 text-sm hover:underline">Forgot PIN? Sign Out</button>
+        </div>
+    </div>
+
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gradient-login p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-6">
+                <h1 class="text-5xl font-bold text-gradient mb-2">AURA</h1>
+                <p class="text-orange-800 dark:text-orange-200">Your Personal Finance Tracker</p>
+            </div>
+            <div class="bg-white/50 dark:bg-stone-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl">
+                <form id="auth-form">
+                    <h2 id="auth-title" class="text-2xl font-bold text-center mb-6 text-stone-900 dark:text-white">Login</h2>
+                    <p id="auth-error" class="text-red-500 text-center text-sm mb-4 h-5"></p>
+                    <div class="space-y-4">
+                        <input type="text" id="auth-identifier" placeholder="Email or Username" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                        <input type="password" id="auth-password" placeholder="Password" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                        <div id="auth-display-name" class="hidden">
+                             <input type="email" id="auth-email" placeholder="Email" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="mt-6 space-y-2">
+                         <button type="submit" id="auth-submit-btn" class="w-full text-white rounded-lg p-3 text-lg font-semibold btn-gradient">Login</button>
+                    </div>
+                </form>
+                <p class="text-center text-sm mt-4 text-stone-600 dark:text-stone-400">
+                    <span id="auth-toggle-text">Don't have an account?</span>
+                    <button id="auth-toggle-btn" class="font-semibold text-orange-600 dark:text-orange-400 hover:underline">Sign Up</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Main App -->
+    <div id="app-screen" class="hidden">
+        <div class="max-w-7xl mx-auto p-4 relative">
+            <!-- Header -->
+            <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                <h1 class="text-4xl font-bold text-gradient">AURA</h1>
+                <div class="flex items-center gap-4">
+                     <button id="header-avatar-btn" class="w-10 h-10 rounded-full border-2 border-[--border-color] overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500">
+                         <img id="header-avatar" class="w-full h-full object-cover" src="https://placehold.co/40x40/fed7aa/7c2d12?text=A" alt="Toggle Navigation">
+                     </button>
+                </div>
+            </header>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Navigation -->
+                <nav id="nav-menu" class="w-full md:w-56 card rounded-xl p-4 flex-shrink-0 hidden md:block">
+                    <ul class="space-y-2">
+                        <li><a href="#" class="nav-link active block rounded-md px-3 py-2" data-target="dashboard">Dashboard</a></li>
+                        <li><a href="#" class="nav-link block rounded-md px-3 py-2" data-target="profile">Profile</a></li>
+                        <li><a href="#" class="nav-link block rounded-md px-3 py-2" data-target="data-management">Data</a></li>
+                    </ul>
+                    <div class="mt-6 pt-4 border-t border-[--border-color]">
+                         <div class="flex items-center gap-2 mb-2">
+                            <img id="nav-avatar" class="w-8 h-8 rounded-full bg-[--bg-tertiary] object-cover" src="https://placehold.co/40x40/fed7aa/7c2d12?text=A" alt="Avatar">
+                            <p id="display-name" class="font-bold text-center"></p>
+                         </div>
+                        <p class="text-xs text-[--text-secondary] mb-2">Your User ID:</p>
+                        <div class="flex items-center bg-[--bg-primary] p-2 rounded-lg">
+                           <input id="user-id-display" type="text" readonly class="text-xs text-[--text-primary] bg-transparent w-full outline-none" value="loading...">
+                           <button id="copy-user-id" class="p-1 text-[--text-secondary] hover:text-[--text-primary]">
+                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                           </button>
+                        </div>
+                         <p id="copy-feedback" class="text-xs text-green-500 mt-1 h-4"></p>
+                         
+                         <div class="flex justify-between items-center mt-4 pt-4 border-t border-[--border-color]">
+                            <p class="text-sm">Toggle Theme</p>
+                            <button id="theme-toggle-btn" class="p-2 rounded-lg bg-[--bg-secondary] border border-[--border-color]">
+                               <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                               <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                           </button>
+                         </div>
+
+                         <button id="sign-out-btn" class="w-full text-left text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 mt-4 p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50">Sign Out</button>
+                    </div>
+                </nav>
+
+                <!-- Main Content -->
+                <main class="flex-1">
+                    <!-- Dashboard -->
+                    <div id="dashboard" class="page-content space-y-6">
+                        <!-- Add Transaction Form -->
+                        <div class="card p-4 rounded-xl">
+                            <h2 class="text-xl font-bold mb-4">Add Transaction</h2>
+                            <form id="add-transaction-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="md:col-span-2">
+                                    <label for="add-description" class="block text-sm font-medium text-[--text-secondary] mb-1">Description</label>
+                                    <input type="text" id="add-description" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                </div>
+                                <div>
+                                    <label for="add-amount" class="block text-sm font-medium text-[--text-secondary] mb-1">Amount (₹)</label>
+                                    <input type="number" id="add-amount" step="0.01" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                </div>
+                                <div>
+                                    <label for="add-date" class="block text-sm font-medium text-[--text-secondary] mb-1">Date</label>
+                                    <input type="text" id="add-date" placeholder="DD/MM/YYYY" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-[--text-secondary] mb-1">Payment Method</label>
+                                    <select id="add-method" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none"><option value="Online">Online</option><option value="Cash">Cash</option></select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-[--text-secondary] mb-1">Type</label>
+                                    <select id="add-type" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none"><option value="expense">Expense</option><option value="income">Income</option></select>
+                                </div>
+                                <div class="md:col-span-2">
+                                     <button type="submit" class="w-full text-white rounded-lg p-2 btn-gradient h-10 mt-2">Add Transaction</button>
+                                </div>
+                            </form>
+                            <p id="add-feedback" class="text-xs text-green-500 mt-2 h-4"></p>
+                        </div>
+
+                        <!-- Summary Boxes -->
+                        <div class="grid grid-cols-2 gap-4">
+                           <div class="card p-4 rounded-xl col-span-2">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Total Opening Balance</h3>
+                                <p id="opening-balance" class="text-2xl font-bold">₹0.00</p>
+                           </div>
+                           <div class="card p-4 rounded-xl col-span-2">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Total Closing Balance</h3>
+                                <p id="closing-balance" class="text-2xl font-bold">₹0.00</p>
+                           </div>
+                           <div class="card p-4 rounded-xl">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Gains</h3>
+                                <p id="monthly-gains" class="text-2xl font-bold text-green-500">₹0.00</p>
+                           </div>
+                           <div class="card p-4 rounded-xl">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Expense</h3>
+                                <p id="monthly-expense" class="text-2xl font-bold text-red-500">₹0.00</p>
+                           </div>
+                            <div class="card p-4 rounded-xl">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Cash Balance</h3>
+                                <p id="cash-balance" class="text-2xl font-bold">₹0.00</p>
+                           </div>
+                            <div class="card p-4 rounded-xl">
+                                <h3 class="text-sm text-[--text-secondary] mb-1">Online Balance</h3>
+                                <p id="online-balance" class="text-2xl font-bold">₹0.00</p>
+                           </div>
+                        </div>
+
+                        <!-- Month Navigator -->
+                        <div class="flex justify-between items-center card p-2 rounded-xl">
+                            <button id="prev-month-btn" class="p-2 rounded-md hover:bg-[--bg-tertiary]"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                            <h2 id="month-display" class="text-xl font-bold text-center cursor-pointer" title="Go to a specific date">September 2025</h2>
+                            <button id="next-month-btn" class="p-2 rounded-md hover:bg-[--bg-tertiary]"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+                        </div>
+                        
+                        <!-- Transactions List -->
+                        <div class="card p-4 rounded-xl">
+                            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                                <div class="flex items-center gap-4">
+                                    <h2 id="transactions-title" class="text-2xl font-bold">Transactions</h2>
+                                    <button id="back-to-month-btn" class="hidden text-sm text-orange-600 hover:underline">Show Full Month</button>
+                                </div>
+                                <input type="text" id="search-transactions" placeholder="Search by name or date..." class="w-full sm:w-64 bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                            </div>
+                            <div id="transactions-list" class="space-y-4 max-h-[100vh] lg:max-h-[calc(100vh-18rem)] overflow-y-auto pr-2">
+                               <p id="no-transactions" class="text-[--text-secondary] text-center py-8">No transactions this month.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Other Pages -->
+                     <div id="profile" class="page-content hidden card p-6 rounded-xl space-y-6">
+                         <h2 class="text-2xl font-bold">My Profile & Settings</h2>
+                         
+                         <!-- Profile Details -->
+                         <div class="card p-4 rounded-xl">
+                             <div class="flex flex-col sm:flex-row items-center gap-4">
+                                 <div class="relative">
+                                     <img id="profile-avatar" class="w-24 h-24 rounded-full bg-[--bg-tertiary] object-cover" src="https://placehold.co/96x96/fed7aa/7c2d12?text=A" alt="Avatar">
+                                     <label for="avatar-upload" class="absolute bottom-0 right-0 bg-white dark:bg-stone-700 p-1.5 rounded-full cursor-pointer hover:bg-gray-200 border border-[--border-color]">
+                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                     </label>
+                                     <input type="file" id="avatar-upload" class="hidden" accept="image/png, image/jpeg">
+                                 </div>
+                                 <div class="flex-1 text-center sm:text-left">
+                                     <p class="text-sm text-[--text-secondary]">Email</p>
+                                     <p id="profile-email" class="font-semibold"></p>
+                                     <form id="update-name-form" class="mt-2 flex items-center gap-2">
+                                         <input type="text" id="profile-name" placeholder="Display Name" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                         <button type="submit" class="px-3 py-2 text-sm rounded-lg btn-gradient text-white font-semibold">Save</button>
+                                     </form>
+                                 </div>
+                             </div>
+                              <p id="profile-feedback" class="text-sm mt-2 h-5 text-center sm:text-right"></p>
+                         </div>
+
+                         <!-- Security Settings -->
+                         <div class="card p-4 rounded-xl">
+                             <h3 class="text-lg font-semibold mb-2">Security & Privacy</h3>
+                             <div class="space-y-4">
+                                 <form id="app-pin-form" class="flex flex-col sm:flex-row items-center gap-2">
+                                      <input type="text" id="app-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Set 4-digit App PIN" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                                      <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Save PIN</button>
+                                      <button type="button" id="remove-pin-btn" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold hidden">Remove PIN</button>
+                                 </form>
+                                 <div class="flex items-center justify-between">
+                                     <label for="hide-previews" class="text-sm">Hide message previews in notifications</label>
+                                     <input type="checkbox" id="hide-previews" class="h-5 w-5 rounded text-orange-500 focus:ring-orange-500">
+                                 </div>
+                             </div>
+                         </div>
+
+                         <!-- Change Password -->
+                         <div class="card p-4 rounded-xl">
+                              <h3 class="text-lg font-semibold mb-2">Change Password</h3>
+                              <form id="change-password-form" class="space-y-4">
+                                  <input type="password" id="new-password" placeholder="New Password" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                  <input type="password" id="confirm-new-password" placeholder="Confirm New Password" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none" required>
+                                  <button type="submit" class="w-full md:w-auto px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Update Password</button>
+                              </form>
+                         </div>
+                    </div>
+                     <div id="data-management" class="page-content hidden card p-6 rounded-xl">
+                         <h2 class="text-2xl font-bold mb-4">Data Management</h2>
+                         <div class="space-y-6">
+                             <!-- Import -->
+                             <div>
+                                 <h3 class="text-lg font-semibold mb-2">Import Data</h3>
+                                 <p class="text-sm text-[--text-secondary] mb-3">Import transactions and monthly summaries from a JSON file. This will update existing entries and add new ones.</p>
+                                 <div class="flex items-center gap-4">
+                                     <input type="file" id="import-file-input" accept=".json" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
+                                     <button id="import-btn" class="px-4 py-2 rounded-lg btn-gradient text-white font-semibold flex-shrink-0">Import</button>
+                                 </div>
+                                 <p id="import-feedback" class="text-sm mt-2 h-5"></p>
+                             </div>
+                             <!-- Export -->
+                             <div>
+                                 <h3 class="text-lg font-semibold mb-2">Export Data</h3>
+                                 <p class="text-sm text-[--text-secondary] mb-3">Export all of your transactions and monthly summaries to a JSON backup file.</p>
+                                 <button id="export-btn" class="px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Export All My Data</button>
+                             </div>
+                         </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="date-picker-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop">
+        <div class="card p-6 rounded-xl w-full max-w-sm m-4">
+            <h3 class="text-xl font-bold mb-4">Go to Date</h3>
+            <form id="date-picker-form">
+                <input type="date" id="date-picker-input" class="w-full bg-[--bg-tertiary] text-[--text-primary] rounded-lg p-2 focus:ring-2 focus:ring-orange-500 focus:outline-none mb-4" required>
+                <div class="flex justify-end gap-2">
+                    <button type="button" id="date-picker-cancel" class="px-4 py-2 rounded-lg hover:bg-[--bg-tertiary]">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg btn-gradient text-white font-semibold">Go</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="transaction-detail-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop">
+        <div class="card p-6 rounded-xl w-full max-w-sm m-4">
+            <h3 class="text-xl font-bold mb-4">Transaction Details</h3>
+            <div id="transaction-detail-content" class="space-y-2 mb-6 text-sm"></div>
+            <div class="flex justify-between gap-2">
+                <button type="button" id="transaction-detail-delete" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold">Delete</button>
+                <button type="button" id="transaction-detail-close" class="px-4 py-2 rounded-lg hover:bg-[--bg-tertiary]">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop">
+        <div class="card p-6 rounded-xl w-full max-w-sm m-4">
+            <h3 class="text-xl font-bold mb-4">Are you sure?</h3>
+            <p class="text-[--text-secondary] mb-6">This action cannot be undone. The transaction will be permanently deleted.</p>
+            <div class="flex justify-end gap-2">
+                <button type="button" id="delete-confirm-cancel" class="px-4 py-2 rounded-lg hover:bg-[--bg-tertiary]">Cancel</button>
+                <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+    
+     <div id="pin-remove-confirm-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop">
+         <div class="card p-6 rounded-xl w-full max-w-sm m-4">
+             <h3 class="text-xl font-bold mb-4">Remove PIN?</h3>
+             <p class="text-[--text-secondary] mb-6">Are you sure you want to remove your app lock PIN?</p>
+             <div class="flex justify-end gap-2">
+                 <button type="button" id="pin-remove-cancel-btn" class="px-4 py-2 rounded-lg hover:bg-[--bg-tertiary]">Cancel</button>
+                 <button type="button" id="pin-remove-confirm-btn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">Yes, Remove</button>
+             </div>
+         </div>
+     </div>
+
+
+    <script type="module">
+        const { createClient } = supabase;
+
+        // --- GLOBAL CONFIG & STATE ---
+        const supabaseUrl = 'https://ahdsjmblyfklicnjlndt.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoZHNqbWJseWZrbGljbmpsbmR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzODIzMjIsImV4cCI6MjA3Mzk1ODMyMn0.jyoK7mllXzd6NXh5bJOIoJVT3MTyzqbu7M5YKQKpyMo';
+        
+        let supabaseClient, user = null, transactionChannel = null, funnyNotificationInterval = null;
+        let transactionsCache = [];
+        let currentDisplayDate = dayjs();
+        let isLoginMode = true;
+        let viewScope = 'month'; // 'month' or 'day'
+        let transactionToDeleteId = null;
+        let pinInput = '';
+        
+        dayjs.extend(dayjs_plugin_customParseFormat);
+        
+        const monthDisplay = document.getElementById('month-display');
+        
+        // --- THEME MANAGEMENT ---
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            const isDark = theme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
+            document.getElementById('theme-icon-dark').classList.toggle('hidden', !isDark);
+        }
+        themeToggleBtn.addEventListener('click', () => setTheme(localStorage.getItem('theme') === 'dark' ? 'light' : 'dark'));
+        setTheme(localStorage.getItem('theme') || 'light');
+        
+        // --- PWA SETUP ---
+        function setupPwa() {
+            const logoUrl = "https://cdn.corenexis.com/view/1216636168";
+            document.getElementById('apple-touch-icon').href = logoUrl;
+            
+            const manifest = {
+                "name": "AURA - Expense Tracker",
+                "short_name": "AURA",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#fff7ed",
+                "theme_color": "#f97316",
+                "description": "Your Personal Finance Tracker",
+                "icons": [
+                    { "src": logoUrl, "sizes": "192x192", "type": "image/png" },
+                    { "src": logoUrl, "sizes": "512x512", "type": "image/png" }
+                ]
+            };
+            const manifestString = JSON.stringify(manifest);
+            const manifestBlob = new Blob([manifestString], {type: 'application/json'});
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            document.getElementById('manifest-link').setAttribute('href', manifestUrl);
+
+            if ('serviceWorker' in navigator) {
+                const swContent = `
+                    const CACHE_NAME = 'aura-cache-v11'; // Incremented cache version
+                    const urlsToCache = [
+                        '/',
+                        'https://cdn.tailwindcss.com',
+                        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+                        'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap',
+                        'https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js',
+                        'https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/customParseFormat.min.js',
+                        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+                        '${logoUrl}'
+                    ];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                     self.addEventListener('activate', event => {
+                         event.waitUntil(
+                             caches.keys().then(cacheNames => {
+                                 return Promise.all(
+                                     cacheNames.filter(cacheName => cacheName !== CACHE_NAME)
+                                         .map(cacheName => caches.delete(cacheName))
+                                 );
+                             })
+                         );
+                     });
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.match(event.request).then(response => {
+                                return response || fetch(event.request);
+                            })
+                        );
+                    });
+
+                     self.addEventListener('notificationclick', event => {
+                         event.notification.close();
+                         event.waitUntil(clients.openWindow('/'));
+                     });
+                `;
+                const swBlob = new Blob([swContent], {type: 'application/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+
+                navigator.serviceWorker.register(swUrl)
+                    .then(registration => {
+                        console.log('Service Worker registered');
+                        registration.update(); // Check for updates on load
+                    })
+                    .catch(error => console.log('Service Worker registration failed:', error));
+            }
+        }
+
+
+        // --- INITIALIZATION ---
+        function initializeSupabase() {
+            if (!supabaseUrl.startsWith('https://') || !supabaseKey.startsWith('ey')) {
+                 document.getElementById('auth-error').textContent = 'Supabase credentials are not set.';
+                 return;
+            }
+            try {
+                supabaseClient = createClient(supabaseUrl, supabaseKey);
+                setupAuthObserver();
+            } catch (error) { console.error("Supabase init failed:", error); }
+        }
+        
+        async function setupAuthObserver() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            handleUserSession(session, true);
+
+            supabaseClient.auth.onAuthStateChange((_event, session) => {
+                handleUserSession(session);
+            });
+        }
+        
+        async function handleUserSession(session, isInitialLoad = false) {
+            const authScreen = document.getElementById('auth-screen');
+            const appScreen = document.getElementById('app-screen');
+            const oldUser = user;
+            user = session?.user || null;
+
+            if (user) {
+                const pin = localStorage.getItem('aura-pin');
+                document.getElementById('remove-pin-btn').classList.toggle('hidden', !pin);
+
+                 if(pin && isInitialLoad && !sessionStorage.getItem('unlocked')){
+                      authScreen.classList.add('hidden');
+                      appScreen.classList.add('hidden');
+                      document.getElementById('app-lock-screen').style.display = 'flex';
+                 } else {
+                      showAppContent(isInitialLoad, oldUser, true);
+                 }
+            } else {
+                sessionStorage.removeItem('unlocked');
+                if (transactionChannel) transactionChannel.unsubscribe();
+                if (funnyNotificationInterval) clearInterval(funnyNotificationInterval);
+
+                transactionsCache = []; 
+                appScreen.classList.add('hidden');
+                document.getElementById('app-lock-screen').style.display = 'none';
+                authScreen.classList.remove('hidden');
+            }
+        }
+
+        async function showAppContent(isInitialLoad = false, oldUser = null, showWelcome = false) {
+            const authScreen = document.getElementById('auth-screen');
+            const appScreen = document.getElementById('app-screen');
+
+            const displayName = user.user_metadata?.display_name || 'No Name';
+            const avatarUrl = user.user_metadata?.avatar_url;
+            
+            document.getElementById('user-id-display').value = user.id;
+            document.getElementById('display-name').textContent = displayName;
+            document.getElementById('profile-email').textContent = user.email;
+            document.getElementById('profile-name').value = displayName;
+            const placeholder = `https://placehold.co/96x96/fed7aa/7c2d12?text=${displayName.charAt(0)}`;
+            [ 'nav-avatar', 'profile-avatar', 'header-avatar' ].forEach(id => {
+                document.getElementById(id).src = avatarUrl || placeholder;
+            });
+            
+            if (isInitialLoad || showWelcome) {
+                showWelcomeScreen(displayName);
+            } else { 
+                authScreen.classList.add('hidden');
+                appScreen.classList.remove('hidden');
+            }
+             sessionStorage.setItem('unlocked', 'true');
+
+            await fetchInitialTransactions();
+            
+            listenToTransactions();
+            setupFunnyNotifications();
+        }
+
+        function showWelcomeScreen(displayName) {
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const welcomeMessage = document.getElementById('welcome-message');
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+            welcomeMessage.textContent = `Hello, ${displayName}!`;
+            welcomeScreen.style.display = 'flex';
+            void welcomeScreen.offsetWidth;
+            welcomeScreen.classList.remove('opacity-0');
+            setTimeout(() => {
+                welcomeScreen.classList.add('opacity-0');
+                setTimeout(() => {
+                    welcomeScreen.style.display = 'none';
+                    document.getElementById('app-screen').classList.remove('hidden');
+                }, 500);
+            }, 2000);
+        }
+        
+        const authForm = document.getElementById('auth-form');
+        const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const authTitle = document.getElementById('auth-title');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authToggleText = document.getElementById('auth-toggle-text');
+        const authError = document.getElementById('auth-error');
+        const authDisplayNameDiv = document.getElementById('auth-display-name');
+        const authIdentifierInput = document.getElementById('auth-identifier');
+        const authEmailInput = document.getElementById('auth-email');
+
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            authError.textContent = '';
+            authForm.reset();
+            authDisplayNameDiv.classList.toggle('hidden', isLoginMode);
+
+            if(isLoginMode) {
+                authIdentifierInput.placeholder = "Email or Username";
+                authEmailInput.required = false;
+            } else {
+                authIdentifierInput.placeholder = "Username";
+                authEmailInput.required = true;
+            }
+
+            authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Create Account';
+            authToggleText.textContent = isLoginMode ? "Don't have an account?" : 'Already have an account?';
+            authToggleBtn.textContent = isLoginMode ? 'Sign Up' : 'Login';
+        }
+        
+        authToggleBtn.addEventListener('click', toggleAuthMode);
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            authError.textContent = '';
+            
+            const identifier = authIdentifierInput.value;
+            const password = document.getElementById('auth-password').value;
+            const email = authEmailInput.value;
+
+            let response;
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = isLoginMode ? 'Logging in...' : 'Creating Account...';
+
+            try {
+                if (isLoginMode) {
+                    let loginEmail = identifier;
+                    if (!identifier.includes('@')) {
+                        const { data, error } = await supabaseClient.rpc('get_email_from_username', { p_username: identifier });
+                        if (error || !data) throw new Error("User not found with that username.");
+                        loginEmail = data;
+                    }
+                    response = await supabaseClient.auth.signInWithPassword({ email: loginEmail, password });
+                } else {
+                    response = await supabaseClient.auth.signUp({ 
+                        email, 
+                        password,
+                        options: { data: { display_name: identifier } }
+                    });
+                }
+                if (response.error) throw response.error;
+                 if (!isLoginMode && response.data.user) {
+                     alert('Sign up successful! Please check your email to confirm your account.');
+                     toggleAuthMode();
+                 }
+
+            } catch (error) {
+                authError.textContent = error.message;
+                console.error("Auth Error: ", error);
+            } finally {
+                authSubmitBtn.disabled = false;
+                authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Create Account';
+            }
+        });
+        
+        document.getElementById('sign-out-btn').addEventListener('click', () => {
+             sessionStorage.clear();
+             supabaseClient.auth.signOut()
+        });
+        document.getElementById('copy-user-id').addEventListener('click', () => {
+             const userIdInput = document.getElementById('user-id-display');
+             userIdInput.select();
+             document.execCommand('copy');
+             const feedback = document.getElementById('copy-feedback');
+             feedback.textContent = 'Copied!';
+             setTimeout(() => feedback.textContent = '', 2000);
+        });
+
+        const pinDotsContainer = document.getElementById('pin-dots');
+        const pinErrorEl = document.getElementById('pin-error');
+        const appLockScreen = document.getElementById('app-lock-screen');
+        const forgotPinBtn = document.getElementById('forgot-pin-btn');
+
+        forgotPinBtn.addEventListener('click', () => {
+            sessionStorage.clear();
+            supabaseClient.auth.signOut();
+        });
+        
+        function updatePinDots() {
+            const dots = pinDotsContainer.children;
+            for (let i = 0; i < dots.length; i++) {
+                dots[i].classList.toggle('bg-white', i < pinInput.length);
+            }
+        }
+
+        async function verifyPin() {
+            const storedPin = localStorage.getItem('aura-pin');
+            if (pinInput === storedPin) {
+                appLockScreen.style.display = 'none';
+                await showAppContent(false, null, true);
+            } else {
+                pinErrorEl.textContent = 'Incorrect PIN. Try again.';
+                pinDotsContainer.classList.add('shake');
+                setTimeout(() => {
+                    pinInput = '';
+                    updatePinDots();
+                    pinErrorEl.textContent = '';
+                    pinDotsContainer.classList.remove('shake');
+                }, 1000);
+            }
+        }
+        
+        document.querySelectorAll('.pin-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (pinInput.length < 4) {
+                    pinInput += btn.textContent;
+                    updatePinDots();
+                    if (pinInput.length === 4) {
+                        verifyPin();
+                    }
+                }
+            });
+        });
+
+        document.getElementById('pin-backspace').addEventListener('click', () => {
+            pinInput = pinInput.slice(0, -1);
+            updatePinDots();
+        });
+
+        const navToggle = document.getElementById('header-avatar-btn');
+        const navMenu = document.getElementById('nav-menu');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pageContents = document.querySelectorAll('.page-content');
+        navToggle.addEventListener('click', () => navMenu.classList.toggle('hidden'));
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.dataset.target;
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                pageContents.forEach(content => content.classList.toggle('hidden', content.id !== targetId));
+                if (window.innerWidth < 768) { navMenu.classList.add('hidden'); }
+            });
+        });
+
+        async function fetchInitialTransactions() {
+            if (!user) return;
+            const { data, error } = await supabaseClient
+                .from('transactions')
+                .select('*')
+                .eq('user_id', user.id);
+            if (error) {
+                console.error("Error fetching initial transactions:", error);
+            } else {
+                transactionsCache = data || [];
+                await updateDashboardView();
+            }
+        }
+
+        function listenToTransactions() {
+            if (transactionChannel) transactionChannel.unsubscribe();
+            if (!user) return;
+            
+            transactionChannel = supabaseClient.channel('public:transactions')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` }, 
+                (payload) => {
+                    fetchInitialTransactions();
+                })
+                .subscribe();
+        }
+
+        const searchInput = document.getElementById('search-transactions');
+
+        async function getStartingBalancesForMonth(monthDate, depth = 0) {
+            if (depth > 60) {
+                console.warn("Reached recursion limit for balance calculation. Assuming zero.");
+                return { cash: 0, online: 0 };
+            }
+
+            if (!user) return { cash: 0, online: 0 };
+            const monthKey = monthDate.format('YYYY-MM');
+
+            const { data, error } = await supabaseClient
+                .from('monthly_summaries')
+                .select('startingCash, startingOnline')
+                .eq('user_id', user.id)
+                .eq('month_key', monthKey)
+                .single();
+
+            if (data) {
+                return { cash: data.startingCash || 0, online: data.startingOnline || 0 };
+            }
+            
+            if(error && error.code !== 'PGRST116'){
+                 console.error(`Error fetching summary for ${monthKey}:`, error);
+            }
+
+            const prevMonthDate = monthDate.subtract(1, 'month');
+            const prevMonthStartBalances = await getStartingBalancesForMonth(prevMonthDate, depth + 1);
+            
+            const prevMonthTransactions = transactionsCache.filter(tx => 
+                dayjs(tx.date, 'DD/MM/YYYY').isSame(prevMonthDate, 'month')
+            );
+
+            let prevMonthCashFlow = 0;
+            let prevMonthOnlineFlow = 0;
+            prevMonthTransactions.forEach(tx => {
+                const amount = tx.type === 'income' ? tx.amount : -tx.amount;
+                if (tx.method?.toLowerCase() === 'cash') prevMonthCashFlow += amount;
+                else prevMonthOnlineFlow += amount;
+            });
+            
+            return {
+                cash: prevMonthStartBalances.cash + prevMonthCashFlow,
+                online: prevMonthStartBalances.online + prevMonthOnlineFlow
+            };
+        }
+        
+        async function updateDashboardView() {
+            if (!user) return; 
+            const transactionsTitle = document.getElementById('transactions-title');
+            const backToMonthBtn = document.getElementById('back-to-month-btn');
+
+            let transactionsToRender;
+            
+            if (viewScope === 'day') {
+                monthDisplay.textContent = currentDisplayDate.format('D MMMM YYYY');
+                transactionsTitle.textContent = `Transactions`;
+                backToMonthBtn.classList.remove('hidden');
+                transactionsToRender = transactionsCache.filter(tx => dayjs(tx.date, 'DD/MM/YYYY').isSame(currentDisplayDate, 'day'));
+            } else {
+                monthDisplay.textContent = currentDisplayDate.format('MMMM YYYY');
+                transactionsTitle.textContent = 'Transactions';
+                backToMonthBtn.classList.add('hidden');
+                transactionsToRender = transactionsCache.filter(tx => dayjs(tx.date, 'DD/MM/YYYY').isSame(currentDisplayDate, 'month'));
+            }
+
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm) {
+                transactionsToRender = transactionsToRender.filter(tx => 
+                    tx.description.toLowerCase().includes(searchTerm) ||
+                    tx.date.includes(searchTerm)
+                );
+            }
+
+            const monthForSummary = currentDisplayDate.startOf('month');
+            const startBalances = await getStartingBalancesForMonth(monthForSummary);
+
+            const monthlyTransactions = transactionsCache.filter(tx => dayjs(tx.date, 'DD/MM/YYYY').isSame(currentDisplayDate, 'month'));
+            
+            let gains = 0, expense = 0, cashFlow = 0, onlineFlow = 0;
+            monthlyTransactions.forEach(tx => {
+                if (tx.type === 'income') {
+                    gains += tx.amount;
+                    if(tx.method?.toLowerCase() === 'cash') cashFlow += tx.amount; else onlineFlow += tx.amount;
+                } else {
+                    expense += tx.amount;
+                    if(tx.method?.toLowerCase() === 'cash') cashFlow -= tx.amount; else onlineFlow -= tx.amount;
+                }
+            });
+
+            const cashBalance = startBalances.cash + cashFlow;
+            const onlineBalance = startBalances.online + onlineFlow;
+
+            document.getElementById('opening-balance').textContent = `₹${(startBalances.cash + startBalances.online).toFixed(2)}`;
+            document.getElementById('monthly-gains').textContent = `₹${gains.toFixed(2)}`;
+            document.getElementById('monthly-expense').textContent = `₹${expense.toFixed(2)}`;
+            document.getElementById('cash-balance').textContent = `₹${cashBalance.toFixed(2)}`;
+            document.getElementById('online-balance').textContent = `₹${onlineBalance.toFixed(2)}`;
+            document.getElementById('closing-balance').textContent = `₹${(cashBalance + onlineBalance).toFixed(2)}`;
+
+            renderTransactions(transactionsToRender);
+        }
+        
+        searchInput.addEventListener('input', updateDashboardView);
+
+        document.getElementById('prev-month-btn').addEventListener('click', () => { 
+            currentDisplayDate = viewScope === 'month' ? currentDisplayDate.subtract(1, 'month') : currentDisplayDate.subtract(1, 'day');
+            updateDashboardView();
+        });
+        document.getElementById('next-month-btn').addEventListener('click', () => {
+            currentDisplayDate = viewScope === 'month' ? currentDisplayDate.add(1, 'month') : currentDisplayDate.add(1, 'day');
+            updateDashboardView();
+        });
+        document.getElementById('back-to-month-btn').addEventListener('click', () => {
+            viewScope = 'month';
+            searchInput.value = '';
+            updateDashboardView();
+        });
+
+        function renderTransactions(transactions) {
+            const listEl = document.getElementById('transactions-list');
+            listEl.innerHTML = transactions.length === 0 ? `<p id="no-transactions" class="text-[--text-secondary] text-center py-8">No matching transactions found.</p>` : '';
+            if (transactions.length === 0) return;
+            
+            const grouped = transactions.reduce((acc, tx) => { (acc[tx.date] = acc[tx.date] || []).push(tx); return acc; }, {});
+            const sortedDates = Object.keys(grouped).sort((a, b) => dayjs(b, 'DD/MM/YYYY').valueOf() - dayjs(a, 'DD/MM/YYYY').valueOf());
+
+            for (const date of sortedDates) {
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'sticky top-0 bg-[--bg-primary] py-1';
+                dateHeader.innerHTML = `<h3 class="text-sm font-semibold text-[--text-secondary]">${dayjs(date, 'DD/MM/YYYY').format('D MMM YYYY, dddd')}</h3>`;
+                listEl.appendChild(dateHeader);
+                
+                grouped[date].forEach(tx => {
+                    const txEl = document.createElement('div');
+                    txEl.className = 'flex items-center justify-between card p-3 rounded-lg hover:bg-[--bg-tertiary] transition-colors duration-200 cursor-pointer';
+                    txEl.dataset.id = tx.id;
+                    txEl.innerHTML = `<div class="flex items-center gap-4"><div><p class="font-semibold text-[--text-primary]">${tx.description}</p><p class="text-sm text-[--text-secondary] capitalize">${tx.method}</p></div></div><p class="font-bold text-lg ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}">${tx.type === 'income' ? '+' : '-'}₹${tx.amount.toFixed(2)}</p>`;
+                    listEl.appendChild(txEl);
+                });
+            }
+        }
+
+        const addTransactionForm = document.getElementById('add-transaction-form');
+        const addDateInput = document.getElementById('add-date');
+        addDateInput.value = dayjs().format('DD/MM/YYYY'); 
+
+        addDateInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '').slice(0, 8);
+            if (value.length > 4) { value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`; }
+            else if (value.length > 2) { value = `${value.slice(0, 2)}/${value.slice(2)}`; }
+            e.target.value = value;
+        });
+
+        async function handleAddTransaction(e) {
+            e.preventDefault();
+            if(!user) return alert("You must be logged in to add a transaction.");
+            const data = {
+                user_id: user.id,
+                description: addTransactionForm.elements['add-description'].value,
+                amount: parseFloat(addTransactionForm.elements['add-amount'].value),
+                date: addTransactionForm.elements['add-date'].value,
+                method: addTransactionForm.elements['add-method'].value,
+                type: addTransactionForm.elements['add-type'].value
+            };
+
+            if (!dayjs(data.date, 'DD/MM/YYYY', true).isValid()) return alert("Invalid date format. Use DD/MM/YYYY.");
+            if (!data.description || data.amount <= 0) return alert("Please fill in a valid description and amount.");
+
+            const { error } = await supabaseClient.from('transactions').insert(data);
+            
+            if (error) {
+                console.error("Save error:", error);
+                alert("Failed to save transaction.");
+            } else {
+                await fetchInitialTransactions();
+                const feedbackEl = document.getElementById('add-feedback');
+                feedbackEl.textContent = 'Transaction added!';
+                addTransactionForm.reset();
+                addDateInput.value = dayjs().format('DD/MM/YYYY');
+                setTimeout(() => feedbackEl.textContent = '', 3000);
+            }
+        }
+        addTransactionForm.addEventListener('submit', handleAddTransaction);
+
+        const transactionsList = document.getElementById('transactions-list');
+        const transactionDetailModal = document.getElementById('transaction-detail-modal');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        
+        function showTransactionDetail(txId) {
+            const transaction = transactionsCache.find(tx => tx.id === txId);
+            if (!transaction) return;
+
+            transactionToDeleteId = txId;
+
+            const detailContent = document.getElementById('transaction-detail-content');
+            detailContent.innerHTML = `
+                <p><span class="font-semibold text-[--text-secondary]">Description:</span> ${transaction.description}</p>
+                <p><span class="font-semibold text-[--text-secondary]">Amount:</span> <span class="${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'} font-bold">₹${transaction.amount.toFixed(2)}</span></p>
+                <p><span class="font-semibold text-[--text-secondary]">Date:</span> ${transaction.date}</p>
+                <p><span class="font-semibold text-[--text-secondary]">Method:</span> ${transaction.method}</p>
+                <p><span class="font-semibold text-[--text-secondary]">Type:</span> <span class="capitalize">${transaction.type}</span></p>
+            `;
+            transactionDetailModal.style.display = 'flex';
+        }
+        
+        transactionsList.addEventListener('click', (e) => {
+            const txEl = e.target.closest('[data-id]');
+            if (txEl) {
+                const txId = parseInt(txEl.dataset.id, 10);
+                showTransactionDetail(txId);
+            }
+        });
+
+        document.getElementById('transaction-detail-close').addEventListener('click', () => {
+            transactionDetailModal.style.display = 'none';
+        });
+
+        document.getElementById('transaction-detail-delete').addEventListener('click', () => {
+            transactionDetailModal.style.display = 'none';
+            deleteConfirmModal.style.display = 'flex';
+        });
+
+        document.getElementById('delete-confirm-cancel').addEventListener('click', () => {
+            deleteConfirmModal.style.display = 'none';
+            transactionToDeleteId = null;
+        });
+
+        document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+            if (!transactionToDeleteId) return;
+            
+            const { error } = await supabaseClient
+                .rpc('delete_transaction', { tx_id: transactionToDeleteId });
+
+            deleteConfirmModal.style.display = 'none';
+
+            if (error) {
+                console.error("Delete error:", error);
+                if (error.code === 'PGRST202') {
+                    alert("Deletion failed: The required 'delete_transaction' helper function is missing in your database. Please run the setup script from the SQL editor in your Supabase project.");
+                } else {
+                    alert("Failed to delete transaction.");
+                }
+            } else {
+                transactionsCache = transactionsCache.filter(tx => tx.id !== transactionToDeleteId);
+                updateDashboardView();
+                await fetchInitialTransactions();
+            }
+            transactionToDeleteId = null;
+        });
+
+
+        const datePickerModal = document.getElementById('date-picker-modal');
+        const datePickerForm = document.getElementById('date-picker-form');
+        const datePickerInput = document.getElementById('date-picker-input');
+        const datePickerCancel = document.getElementById('date-picker-cancel');
+
+        monthDisplay.addEventListener('click', () => {
+            datePickerInput.value = currentDisplayDate.format('YYYY-MM-DD');
+            datePickerModal.style.display = 'flex';
+        });
+        datePickerCancel.addEventListener('click', () => {
+            datePickerModal.style.display = 'none';
+        });
+        datePickerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            currentDisplayDate = dayjs(datePickerInput.value);
+            viewScope = 'day';
+            searchInput.value = '';
+            updateDashboardView();
+            datePickerModal.style.display = 'none';
+        });
+
+
+        const importFileInput = document.getElementById('import-file-input');
+        const importBtn = document.getElementById('import-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const importFeedback = document.getElementById('import-feedback');
+
+        async function handleImport() {
+            if (!user) return alert("You must be logged in to import data.");
+            const file = importFileInput.files[0];
+            if (!file) {
+                importFeedback.textContent = 'Please select a file first.';
+                importFeedback.className = 'text-sm mt-2 h-5 text-red-500';
+                return;
+            }
+
+            importFeedback.textContent = 'Importing...';
+            importFeedback.className = 'text-sm mt-2 h-5 text-orange-500';
+
+            try {
+                const fileContent = await file.text();
+                const data = JSON.parse(fileContent);
+
+                const summariesToUpsert = [];
+                const transactionsToUpsert = [];
+
+                // NOTE: This part has been corrected to use the file data, not hardcoded data.
+                for (const monthKey in data) {
+                    const monthData = data[monthKey];
+                    summariesToUpsert.push({
+                        user_id: user.id,
+                        month_key: monthKey,
+                        startingCash: monthData.startingCash,
+                        startingOnline: monthData.startingOnline
+                    });
+                    
+                    if(monthData.transactions){
+                        monthData.transactions.forEach(tx => {
+                            transactionsToUpsert.push({
+                                user_id: user.id,
+                                description: tx.description,
+                                amount: tx.amount,
+                                date: dayjs(tx.date).format('DD/MM/YYYY'),
+                                method: tx.fundType || tx.method, // Handle both formats
+                                type: tx.type
+                            });
+                        });
+                    }
+                }
+                
+                if (summariesToUpsert.length > 0) {
+                    const { error: summaryError } = await supabaseClient
+                        .from('monthly_summaries')
+                        .upsert(summariesToUpsert, { onConflict: 'user_id, month_key' });
+                    if (summaryError) throw summaryError;
+                }
+
+                if(transactionsToUpsert.length > 0){
+                    const { error: txError } = await supabaseClient
+                        .from('transactions')
+                        .insert(transactionsToUpsert);
+                    if (txError) throw txError;
+                }
+                
+                importFeedback.textContent = 'Import successful! Refreshing data...';
+                importFeedback.className = 'text-sm mt-2 h-5 text-green-500';
+                
+                await fetchInitialTransactions();
+
+            } catch (error) {
+                console.error("Import failed:", error);
+                importFeedback.textContent = `Import failed: ${error.message}`;
+                importFeedback.className = 'text-sm mt-2 h-5 text-red-500';
+            } finally {
+                setTimeout(() => importFeedback.textContent = '', 5000);
+            }
+        }
+
+        async function handleExport() {
+            if (!user) return alert("You must be logged in to export data.");
+
+            const { data: transactions, error: txError } = await supabaseClient
+                .from('transactions').select('*').eq('user_id', user.id);
+            
+            if (txError) return alert('Failed to fetch transactions for export.');
+
+            const { data: summaries, error: summaryError } = await supabaseClient
+                .from('monthly_summaries').select('*').eq('user_id', user.id);
+
+            if (summaryError) return alert('Failed to fetch summaries for export.');
+
+            const exportData = {
+                transactions,
+                monthly_summaries: summaries,
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aura-export-${dayjs().format('YYYY-MM-DD')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        importBtn.addEventListener('click', handleImport);
+        exportBtn.addEventListener('click', handleExport);
+        
+        
+        const avatarUploadInput = document.getElementById('avatar-upload');
+        const updateNameForm = document.getElementById('update-name-form');
+        const changePasswordForm = document.getElementById('change-password-form');
+        const profileFeedback = document.getElementById('profile-feedback');
+        const appPinForm = document.getElementById('app-pin-form');
+        const removePinBtn = document.getElementById('remove-pin-btn');
+        const pinRemoveConfirmModal = document.getElementById('pin-remove-confirm-modal');
+
+        removePinBtn.addEventListener('click', () => {
+            pinRemoveConfirmModal.style.display = 'flex';
+        });
+
+        document.getElementById('pin-remove-cancel-btn').addEventListener('click', () => {
+            pinRemoveConfirmModal.style.display = 'none';
+        });
+
+        document.getElementById('pin-remove-confirm-btn').addEventListener('click', () => {
+            localStorage.removeItem('aura-pin');
+            profileFeedback.textContent = 'PIN removed successfully!';
+            profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-green-500';
+            removePinBtn.classList.add('hidden');
+            pinRemoveConfirmModal.style.display = 'none';
+            setTimeout(() => profileFeedback.textContent = '', 3000);
+        });
+        
+        appPinForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const pinInputEl = document.getElementById('app-pin');
+            const newPin = pinInputEl.value;
+            if (/^\d{4}$/.test(newPin)) {
+                localStorage.setItem('aura-pin', newPin);
+                profileFeedback.textContent = 'PIN saved successfully!';
+                profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-green-500';
+                pinInputEl.value = '';
+                removePinBtn.classList.remove('hidden');
+            } else {
+                profileFeedback.textContent = 'PIN must be 4 digits.';
+                profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-red-500';
+            }
+            setTimeout(() => profileFeedback.textContent = '', 3000);
+        });
+
+        async function handleAvatarUpload(e) {
+            if (!user || !e.target.files || e.target.files.length === 0) return;
+            const file = e.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+            profileFeedback.textContent = 'Uploading...';
+            profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-orange-500';
+
+            const { error: uploadError } = await supabaseClient.storage.from('profile-pictures').upload(filePath, file);
+
+            if (uploadError) {
+                console.error('Avatar upload error:', uploadError);
+                profileFeedback.textContent = 'Upload failed.';
+                profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-red-500';
+                return;
+            }
+
+            const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
+
+            const { error: updateUserError } = await supabaseClient.auth.updateUser({
+                data: { avatar_url: publicUrl }
+            });
+
+            if (updateUserError) {
+                 profileFeedback.textContent = 'Failed to update profile.';
+                 profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-red-500';
+            } else {
+                 profileFeedback.textContent = 'Avatar updated!';
+                 profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-green-500';
+                 document.getElementById('profile-avatar').src = publicUrl;
+                 document.getElementById('nav-avatar').src = publicUrl;
+                 document.getElementById('header-avatar').src = publicUrl;
+            }
+             setTimeout(() => profileFeedback.textContent = '', 3000);
+        }
+
+        async function handleUpdateName(e) {
+            e.preventDefault();
+            const newName = document.getElementById('profile-name').value;
+            if (!newName || newName === user.user_metadata.display_name) return;
+
+             const { error } = await supabaseClient.auth.updateUser({
+                 data: { display_name: newName }
+             });
+            if (error) {
+                profileFeedback.textContent = `Error: ${error.message}`;
+                profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-red-500';
+            } else {
+                profileFeedback.textContent = 'Display name updated!';
+                profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-green-500';
+                document.getElementById('display-name').textContent = newName;
+            }
+            setTimeout(() => profileFeedback.textContent = '', 3000);
+        }
+
+        async function handleChangePassword(e) {
+             e.preventDefault();
+             const newPassword = document.getElementById('new-password').value;
+             const confirmPassword = document.getElementById('confirm-new-password').value;
+             
+             profileFeedback.textContent = '';
+             profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right';
+
+             if (newPassword.length < 6) {
+                  profileFeedback.textContent = 'Password must be at least 6 characters.';
+                  profileFeedback.classList.add('text-red-500');
+                  setTimeout(() => { profileFeedback.textContent = ''; profileFeedback.classList.remove('text-red-500'); }, 5000);
+                  return;
+             }
+
+             if (newPassword !== confirmPassword) {
+                  profileFeedback.textContent = 'Passwords do not match.';
+                  profileFeedback.classList.add('text-red-500');
+                  setTimeout(() => { profileFeedback.textContent = ''; profileFeedback.classList.remove('text-red-500'); }, 5000);
+                  return;
+             }
+
+             const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+             
+             if (error) {
+                 if (error.message.toLowerCase().includes('requires recent authentication')) {
+                       profileFeedback.textContent = 'For security, please sign out and sign in again to change password.';
+                 } else {
+                     profileFeedback.textContent = `Error: ${error.message}`;
+                 }
+                 profileFeedback.classList.add('text-red-500');
+             } else {
+                 profileFeedback.textContent = 'Password updated successfully!';
+                 profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right text-green-500';
+                 changePasswordForm.reset();
+             }
+             setTimeout(() => {
+                 profileFeedback.textContent = '';
+                 profileFeedback.className = 'text-sm mt-2 h-5 text-center sm:text-right';
+             }, 5000);
+        }
+
+        avatarUploadInput.addEventListener('change', handleAvatarUpload);
+        updateNameForm.addEventListener('submit', handleUpdateName);
+        changePasswordForm.addEventListener('submit', handleChangePassword);
+
+
+        function setupFunnyNotifications() {
+            if (funnyNotificationInterval) clearInterval(funnyNotificationInterval); 
+
+            const funnyMessages = [
+                { title: "AURA Whispers", body: "Your wallet is looking a little lean. Maybe a no-spend day is in order? 😉" },
+                { title: "Money Memo from AURA", body: "Psst... have you checked on your savings lately? They miss you!" },
+                { title: "Financial Forecast", body: "A wild expense appeared! What will you do? (We suggest 'Run Away'.)" },
+                { title: "AURA's Two Cents", body: "Remember: 'A penny saved is a penny earned.' - Wise Person (probably)" },
+            ];
+
+            funnyNotificationInterval = setInterval(() => {
+                if (Notification.permission === 'granted' && document.hidden) {
+                     const randomMsg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+                     navigator.serviceWorker.ready.then(registration => {
+                         registration.showNotification(randomMsg.title, {
+                             body: randomMsg.body,
+                             icon: 'https://cdn.corenexis.com/view/1216636168'
+                         });
+                     });
+                }
+            }, 4 * 60 * 60 * 1000); // Every 4 hours
+        }
+
+
+        // --- STARTUP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSupabase();
+            setupPwa();
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission();
+            }
+        });
+    </script>
+</body>
+</html>
+
