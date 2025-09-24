@@ -16,7 +16,7 @@
     <link id="manifest-link" rel="manifest">
     <meta name="theme-color" content="#f97316">
     <!-- Updated Apple Touch Icon with your new image -->
-    <link id="apple-touch-icon" rel="apple-touch-icon" href="https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/public/app%20icon/aura1.jpg">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/public/assets/aura1.jpg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AURA">
@@ -444,7 +444,8 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoZHNqbWJseWZrbGljbmpsbmR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzODIzMjIsImV4cCI6MjA3Mzk1ODMyMn0.jyoK7mllXzd6NXh5bJOIoJVT3MTyzqbu7M5YKQKpyMo';
         
         // --- STEP 3: PASTE YOUR SUPABASE ICON URL HERE ---
-        const logoUrl = "https://i.ibb.co/2WtL5xP/aura-final-icon-2.png"; // Replace this with your URL from Supabase Storage
+        // Make sure this URL is correct and the bucket is public!
+        const logoUrl = "https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/public/assets/aura1.jpg";
 
         let supabaseClient, user = null, transactionChannel = null, funnyNotificationInterval = null;
         let transactionsCache = [];
@@ -1353,5 +1354,6 @@
     </script>
 </body>
 </html>
+
 
 
