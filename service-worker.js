@@ -1,11 +1,11 @@
 // --- Service Worker for AURA ---
 
 // NOTE: If you change the logoUrl in index.html, you MUST change it here too.
-const logoUrl = "https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/public/app%20icon/aura1.jpg";
+const logoUrl = "https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/public/assets/aura1.jpg";
 
 // Increment the version number to force the service worker to update
 // and re-cache all the files when you make changes.
-const CACHE_NAME = 'aura-cache-v19';
+const CACHE_NAME = 'aura-cache-v21';
 
 // List of all the essential files your app needs to work offline.
 const urlsToCache = [
