@@ -493,65 +493,18 @@
             document.getElementById('manifest-link').setAttribute('href', manifestUrl);
 
             if ('serviceWorker' in navigator) {
-                // NOTE: This method of creating a Service Worker from a dynamic string might be
-                // blocked in some sandboxed environments (like this preview), causing an error.
-                // However, this is a valid approach for single-file web apps on a standard web host.
-                const swContent = `
-                    const CACHE_NAME = 'aura-cache-v18'; // Increment this version on asset changes
-                    const logoUrl = "${logoUrl}";
-
-                    const urlsToCache = [
-                        '/',
-                        'https://cdn.tailwindcss.com',
-                        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-                        'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap',
-                        'https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js',
-                        'https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/customParseFormat.min.js',
-                        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-                        logoUrl
-                    ];
-
-                    self.addEventListener('install', event => {
-                        event.waitUntil(
-                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-                        );
-                    });
-
-                    self.addEventListener('activate', event => {
-                        event.waitUntil(
-                            caches.keys().then(cacheNames => {
-                                return Promise.all(
-                                    cacheNames.filter(cacheName => cacheName !== CACHE_NAME)
-                                        .map(cacheName => caches.delete(cacheName))
-                                );
-                            })
-                        );
-                    });
-
-                    self.addEventListener('fetch', event => {
-                        event.respondWith(
-                            caches.match(event.request).then(response => {
-                                return response || fetch(event.request);
-                            })
-                        );
-                    });
-
-                    self.addEventListener('notificationclick', event => {
-                        event.notification.close();
-                        event.waitUntil(clients.openWindow('/'));
-                    });
-                `;
-
-                const swBlob = new Blob([swContent], {type: 'application/javascript'});
-                const swUrl = URL.createObjectURL(swBlob);
-
-                navigator.serviceWorker.register(swUrl)
+                // Register the dedicated service-worker.js file.
+                // This is the standard and most reliable method for PWAs.
+                navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
                         console.log('Service Worker registered successfully.');
+                        // Check for updates to the service worker file on page load.
                         registration.update();
                     })
                     .catch(error => {
-                        console.error('Service Worker registration failed (this may be expected in a sandboxed preview):', error);
+                        // This error is expected in some sandboxed preview environments
+                        // but will work correctly on a live web server.
+                        console.error('Service Worker registration failed. This is expected if not on a live server (HTTPS).', error);
                     });
             }
         }
@@ -1400,4 +1353,5 @@
     </script>
 </body>
 </html>
+
 
