@@ -16,7 +16,7 @@
     <link id="manifest-link" rel="manifest">
     <meta name="theme-color" content="#f97316">
     <!-- Updated Apple Touch Icon with your new image -->
-    <link id="apple-touch-icon" rel="apple-touch-icon" href="https://i.ibb.co/dKx7C2j/aura1.png">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="https://i.ibb.co/zZfP2yH/aura-icon-square.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AURA">
@@ -151,7 +151,7 @@
     <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gradient-login p-4">
         <div class="w-full max-w-md">
             <div class="text-center mb-6">
-                <h1 class="text-5xl font-bold text-gradient mb-2">AURA</h1>
+                <h1 class="text-5xl font-bold text-stone-900 dark:text-white mb-2">AURA</h1>
                 <p class="text-orange-800 dark:text-orange-200">Your Personal Finance Tracker</p>
             </div>
             <div class="bg-white/50 dark:bg-stone-800/50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl">
@@ -469,8 +469,8 @@
         
         // --- PWA SETUP ---
         function setupPwa() {
-            // UPDATED: Using your new image as the logo/icon for the PWA.
-            const logoUrl = "https://i.ibb.co/dKx7C2j/aura1.png";
+            // UPDATED: Using a new, square image for the app icon
+            const logoUrl = "https://i.ibb.co/zZfP2yH/aura-icon-square.png";
             document.getElementById('apple-touch-icon').href = logoUrl;
             
             const manifest = {
@@ -493,7 +493,7 @@
 
             if ('serviceWorker' in navigator) {
                 const swContent = `
-                    const CACHE_NAME = 'aura-cache-v13'; // Incremented cache version
+                    const CACHE_NAME = 'aura-cache-v14'; // Incremented cache version
                     const urlsToCache = [
                         '/',
                         'https://cdn.tailwindcss.com',
@@ -1371,7 +1371,7 @@
                      navigator.serviceWorker.ready.then(registration => {
                          registration.showNotification(randomMsg.title, {
                              body: randomMsg.body,
-                             icon: 'https://i.ibb.co/dKx7C2j/aura1.png'
+                             icon: 'https://i.ibb.co/zZfP2yH/aura-icon-square.png'
                          });
                      });
                 }
@@ -1390,6 +1390,4 @@
     </script>
 </body>
 </html>
-
-
 
