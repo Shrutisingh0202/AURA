@@ -821,9 +821,10 @@
             const prevMonthDate = monthDate.subtract(1, 'month');
             const prevMonthStartBalances = await getStartingBalancesForMonth(prevMonthDate, depth + 1);
             
-            const prevMonthTransactions = transactionsCache.filter(tx => 
-                dayjs(tx.date, 'DD/MM/YYYY').isSame(prevMonthDate, 'month')
-            );
+           const prevMonthTransactions = transactionsCache.filter(tx => {
+           const txDate = dayjs(tx.date, 'DD/MM/YYYY');
+           return txDate.isSame(prevMonthDate, 'month');
+            });
 
             let prevMonthCashFlow = 0;
             let prevMonthOnlineFlow = 0;
