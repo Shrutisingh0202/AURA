@@ -5,7 +5,7 @@ const logoUrl = "https://ahdsjmblyfklicnjlndt.supabase.co/storage/v1/object/publ
 
 // Increment the version number to force the service worker to update
 // and re-cache all the files when you make changes.
-const CACHE_NAME = 'aura-cache-v22';
+const CACHE_NAME = 'aura-cache-v23';
 
 // List of all the essential files your app needs to work offline.
 const urlsToCache = [
